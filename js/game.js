@@ -380,6 +380,12 @@ export class Game {
       this.cam.ex += (d.ex - this.cam.ex) * k; this.cam.ey += (d.ey - this.cam.ey) * k; this.cam.ez += (d.ez - this.cam.ez) * k;
       this.cam.tx += (d.tx - this.cam.tx) * k; this.cam.ty += (d.ty - this.cam.ty) * k; this.cam.tz += (d.tz - this.cam.tz) * k;
     }
+    // Keep the eye inside the room so a tall side/far wall never fills the view
+    // when aiming away from a nearby wall. The near (minZ) wall is a low curb, so
+    // the eye is free to sit behind the tee (no lower-z clamp).
+    const cb = this.hole.bounds;
+    this.cam.ex = Math.max(cb.minX + 0.5, Math.min(cb.maxX - 0.5, this.cam.ex));
+    this.cam.ez = Math.min(cb.maxZ - 0.5, this.cam.ez);
     const sh = this.shake;
     const sx = sh ? (Math.random() - 0.5) * sh : 0, sy = sh ? (Math.random() - 0.5) * sh : 0;
     this._eye[0] = this.cam.ex + sx; this._eye[1] = this.cam.ey + sy; this._eye[2] = this.cam.ez;
