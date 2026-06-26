@@ -41,7 +41,11 @@ export function genHole(runSeed, holeIndex) {
   for (let i = 0; i < nBox; i++) {
     const w = R.range(r, 1.4, 3.0), d = R.range(r, 1.4, 3.0);
     const s = spot(Math.max(w, d) / 2 + 0.5); if (!s) continue;
-    boxes.push({ x: s.x, z: s.z, w, d, h: R.range(r, 1.0, 1.6), breakable: R.chance(r, 0.5), broken: false, wall: false });
+    const breakable = R.chance(r, 0.5);
+    // propType is visual only (cardboard crate vs welded metal-scrap pile);
+    // breakable crates read as cardboard so the saw power-shot smashing them lands.
+    boxes.push({ x: s.x, z: s.z, w, d, h: R.range(r, 1.0, 1.6), breakable, broken: false, wall: false,
+      propType: breakable ? "cardboard" : "scrap", yaw: R.range(r, -0.25, 0.25) });
   }
 
   const nPil = R.int(r, 0, Math.min(4, Math.floor(df / 2)));
@@ -62,7 +66,8 @@ export function genHole(runSeed, holeIndex) {
   const nMine = R.int(r, floor >= 2 ? 1 : 0, Math.min(6, Math.floor(df / 1.4)));
   for (let i = 0; i < nMine; i++) {
     const s = spot(0.85, 0.5); if (!s) continue;
-    mines.push({ x: s.x, z: s.z, r: 0.7, armed: true });
+    // variant is visual only (bench saw-blade vs rusty spike cluster); same circle collision.
+    mines.push({ x: s.x, z: s.z, r: 0.7, armed: true, variant: R.chance(r, 0.5) ? "saw" : "spikes" });
   }
 
   const nSand = floor >= 2 ? R.int(r, 0, 2) : 0;
@@ -84,6 +89,13 @@ export function genHole(runSeed, holeIndex) {
     if (s) pickups.push({ x: s.x, z: s.z, r: 0.8, itemKey: R.pick(r, ITEM_KEYS), taken: false });
   }
 
+  // Bloodstain / warning-paint decals on the felt — purely cosmetic, no collision.
+  const decals = [];
+  const nDecal = R.int(r, 1, 3);
+  for (let i = 0; i < nDecal; i++)
+    decals.push({ x: R.range(r, bounds.minX + 2, bounds.maxX - 2), z: R.range(r, 6, L - 4),
+      s: R.range(r, 1.4, 2.8), rot: R.range(r, 0, Math.PI) });
+
   // Par from distance + obstacle density (§7.1 parameter cross-check).
   const dist = Math.hypot(cup.x - tee.x, cup.z - tee.z);
   const density = boxes.length + pillars.length + bars.length;
@@ -101,7 +113,7 @@ export function genHole(runSeed, holeIndex) {
 
   return {
     index: holeIndex, floor, par, seed: runSeed, W, L, bounds,
-    tee, cup, boxes, pillars, bars, mines, sand, water, pickups,
+    tee, cup, boxes, pillars, bars, mines, sand, water, pickups, decals,
     chamber, liveCount: live, blankCount: size - live,
   };
 }

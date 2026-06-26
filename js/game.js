@@ -15,16 +15,23 @@ const MAX_PUTT = 26, ROLL_FRICTION = 1.6, SAND_FRICTION = 7.5, DAMP = 0.992;
 const STOP_EPS = 0.3, SINK_SPEED = 10, RESTITUTION = 0.62, AIM_SPEED = 2.2, POWER_PERIOD = 1.1;
 const CAM_DIST = 8.5, CAM_HEIGHT = 6.2, LOOK_AHEAD = 2.5, LOOK_HEIGHT = 0.5;
 const START_HP = 5, MAX_HP = 6;
+const ROOM_H = 8.0, CEIL_Y = 8.4; // basement shell — above the low-angle camera
 
 // ---- palette (STYLE FORMULA block 3, by role) ----
 const COL = {
-  felt: [0.12, 0.25, 0.14], floor: [0.07, 0.07, 0.08], wall: [0.18, 0.17, 0.19],
+  felt: [0.62, 0.82, 0.6], floor: [0.42, 0.42, 0.48], wall: [0.6, 0.6, 0.66],
   crate: [0.36, 0.22, 0.1], block: [0.2, 0.2, 0.22], pillar: [0.22, 0.21, 0.24],
   bar: [0.28, 0.1, 0.1], mine: [0.85, 0.12, 0.08], water: [0.04, 0.12, 0.18],
   sand: [0.46, 0.4, 0.24], ball: [0.86, 0.84, 0.78], flag: [0.72, 0.06, 0.06],
   pole: [0.3, 0.3, 0.32], cup: [0.015, 0.015, 0.02], aim: [0.95, 0.82, 0.3],
   pickup: { beer: [0.72, 0.45, 0.08], pills: [0.4, 0.72, 0.2], smoke: [0.7, 0.7, 0.6],
             glass: [0.3, 0.6, 0.75], saw: [0.7, 0.5, 0.15], cuffs: [0.6, 0.6, 0.66] },
+  // ---- basement environment + grimy improvised-course props ----
+  concrete: [0.84, 0.84, 0.9], ceiling: [0.52, 0.52, 0.6], cord: [0.05, 0.05, 0.05],
+  bulb: [1.0, 0.86, 0.62], pipe: [0.5, 0.42, 0.36], drain: [0.06, 0.06, 0.07],
+  cardboard: [0.5, 0.46, 0.4], cardWet: [0.32, 0.26, 0.2], rust: [0.5, 0.4, 0.34],
+  rustHot: [0.55, 0.16, 0.07], wood: [0.5, 0.42, 0.34], steel: [0.45, 0.45, 0.5],
+  blood: [1.0, 1.0, 1.0], chain: [0.28, 0.28, 0.3], feltFlat: [0.12, 0.25, 0.14],
 };
 
 export class Game {
@@ -32,11 +39,14 @@ export class Game {
     this.canvas = canvas; this.els = els;
     this.renderer = new Renderer(canvas);
     this.renderer.loadPrimitives();
+    this.renderer.loadTextures();
+    this.TEX = this.renderer.textures;
     this.renderer.resize();
     this.renderer.setJitter(220); // subtle PS1 wobble
     this.audio = new Audio();
     // scratch
     this.proj = mat4.create(); this.view = mat4.create(); this.vp = mat4.create();
+    this._uv = [1, 1]; // reused per textured draw (zero per-frame alloc)
     this._eye = [0, 0, 0]; this._ctr = [0, 0, 0]; this._up = [0, 1, 0];
     this.cam = { ex: 0, ey: 10, ez: -10, tx: 0, ty: 0, tz: 0 };
     this.shake = 0; this.flash = 0; this.simTime = 0;
@@ -360,9 +370,11 @@ export class Game {
     const R = this.renderer, gl = R.gl;
     // title: slow orbit; else follow
     if (this.state === "title") {
-      const a = this.simTime * 0.25, c = this.hole.cup, ctr = (this.hole.bounds.maxZ) / 2;
-      this.cam.ex = Math.cos(a) * 16; this.cam.ez = ctr + Math.sin(a) * 16; this.cam.ey = 11;
-      this.cam.tx = 0; this.cam.ty = 0; this.cam.tz = ctr;
+      // slow swaying view from behind the tee, down the course — inside the basement
+      const t = this.hole.tee, sway = Math.sin(this.simTime * 0.4) * 0.28;
+      const dx = Math.cos(this.aimAngle + sway), dz = Math.sin(this.aimAngle + sway);
+      this.cam.ex = t.x - dx * CAM_DIST; this.cam.ey = CAM_HEIGHT - 1.2; this.cam.ez = t.z - dz * CAM_DIST;
+      this.cam.tx = t.x + dx * 8; this.cam.ty = LOOK_HEIGHT; this.cam.tz = t.z + dz * 8;
     } else {
       const d = this.desiredCam(), k = 0.16;
       this.cam.ex += (d.ex - this.cam.ex) * k; this.cam.ey += (d.ey - this.cam.ey) * k; this.cam.ez += (d.ez - this.cam.ez) * k;
@@ -378,21 +390,58 @@ export class Game {
     mat4.multiply(this.vp, this.proj, this.view);
     R.beginFrame(this.vp, this._eye[0], this._eye[1], this._eye[2], this.simTime);
 
-    const h = this.hole, M = R.meshes;
-    // surrounding concrete floor + the green
-    R.draw(M.plane, 0, -0.06, h.bounds.maxZ / 2, 0, h.W + 40, 1, h.L + 40, COL.floor, 0);
-    R.draw(M.plane, 0, 0, h.bounds.maxZ / 2, 0, h.W, 1, h.L, COL.felt, 0);
+    const h = this.hole, M = R.meshes, T = this.TEX, uv = this._uv, bn = h.bounds, cz = bn.maxZ / 2;
+
+    // surrounding concrete basement floor + the textured green
+    uv[0] = (h.W + 40) / 4; uv[1] = (h.L + 40) / 4;
+    R.draw(M.plane, 0, -0.06, cz, 0, h.W + 40, 1, h.L + 40, COL.floor, 0, T.concrete, uv);
+    uv[0] = h.W / 3; uv[1] = h.L / 3;
+    R.draw(M.plane, 0, 0, cz, 0, h.W, 1, h.L, COL.felt, 0, T.felt, uv);
+
+    // bloodstain / warning decals on the felt (alpha-blended, flush)
+    R.blend(true);
+    for (const dc of h.decals) { uv[0] = 1; uv[1] = 1; R.draw(M.plane, dc.x, 0.012, dc.z, dc.rot, dc.s, 1, dc.s, COL.blood, 0, T.blood, uv); }
+    R.blend(false);
 
     // sand & water (flush quads)
     for (const s of h.sand) R.draw(M.plane, (s.minX + s.maxX) / 2, 0.02, (s.minZ + s.maxZ) / 2, 0, s.maxX - s.minX, 1, s.maxZ - s.minZ, COL.sand, 0);
-    for (const w of h.water) R.draw(M.plane, (w.minX + w.maxX) / 2, 0.02, (w.minZ + w.maxZ) / 2, 0, w.maxX - w.minX, 1, w.maxZ - w.minZ, COL.water, 0.25 + 0.1 * Math.sin(this.simTime * 2));
+    for (const w of h.water) R.draw(M.plane, (w.minX + w.maxX) / 2, 0.02, (w.minZ + w.maxZ) / 2, 0, w.maxX - w.minX, 1, w.maxZ - w.minZ, COL.water, 0.22 + 0.1 * Math.sin(this.simTime * 2));
 
-    // boundary walls
-    const wh = 1.0, bn = h.bounds;
-    R.draw(M.box, bn.minX - 0.25, wh / 2, bn.maxZ / 2, 0, 0.5, wh, h.L + 1, COL.wall, 0);
-    R.draw(M.box, bn.maxX + 0.25, wh / 2, bn.maxZ / 2, 0, 0.5, wh, h.L + 1, COL.wall, 0);
-    R.draw(M.box, 0, wh / 2, bn.minZ - 0.25, 0, h.W + 1, wh, 0.5, COL.wall, 0);
-    R.draw(M.box, 0, wh / 2, bn.maxZ + 0.25, 0, h.W + 1, wh, 0.5, COL.wall, 0);
+    // basement room shell: tall side + far walls + dark ceiling slab. The NEAR
+    // (minZ) wall is left low — a tall one sits right in front of the camera
+    // (which orbits behind the tee) and would block the course.
+    uv[0] = (h.L + 2) / 4; uv[1] = ROOM_H / 4;
+    R.draw(M.box, bn.minX - 0.6, ROOM_H / 2, cz, 0, 0.6, ROOM_H, h.L + 2, COL.concrete, 0, T.concrete, uv);
+    R.draw(M.box, bn.maxX + 0.6, ROOM_H / 2, cz, 0, 0.6, ROOM_H, h.L + 2, COL.concrete, 0, T.concrete, uv);
+    uv[0] = (h.W + 2) / 4; uv[1] = ROOM_H / 4;
+    R.draw(M.box, 0, ROOM_H / 2, bn.maxZ + 0.6, 0, h.W + 2, ROOM_H, 0.6, COL.concrete, 0, T.concrete, uv);
+    uv[0] = (h.W + 2) / 4; uv[1] = (h.L + 2) / 4;
+    R.draw(M.plane, 0, CEIL_Y, cz, 0, h.W + 2, 1, h.L + 2, COL.ceiling, 0, T.concrete, uv);
+
+    // short play-edge curb at the physics boundary (the ball bounces here)
+    const wh = 0.55;
+    uv[0] = (h.L + 1) / 3; uv[1] = 1;
+    R.draw(M.box, bn.minX - 0.25, wh / 2, cz, 0, 0.5, wh, h.L + 1, COL.concrete, 0, T.concrete, uv);
+    R.draw(M.box, bn.maxX + 0.25, wh / 2, cz, 0, 0.5, wh, h.L + 1, COL.concrete, 0, T.concrete, uv);
+    uv[0] = (h.W + 1) / 3;
+    R.draw(M.box, 0, wh / 2, bn.minZ - 0.25, 0, h.W + 1, wh, 0.5, COL.concrete, 0, T.concrete, uv);
+    R.draw(M.box, 0, wh / 2, bn.maxZ + 0.25, 0, h.W + 1, wh, 0.5, COL.concrete, 0, T.concrete, uv);
+
+    // swinging bare bulb over the course
+    {
+      const swing = Math.sin(this.simTime * 1.3) * 0.5, cordLen = 2.6, pY = CEIL_Y - 0.1;
+      const bx = Math.sin(swing) * cordLen, by = pY - Math.cos(swing) * cordLen;
+      R.draw(M.cyl, bx / 2, (pY + by) / 2, cz, 0, 0.04, cordLen, 0.04, COL.cord, 0);
+      R.draw(M.ball, bx, by, cz, 0, 0.5, 0.5, 0.5, COL.bulb, 0.95);
+    }
+
+    // rusted iron pipes along the side walls + a floor drain near the tee
+    uv[0] = h.L * 0.35; uv[1] = 1;
+    R.draw(M.box, bn.minX - 0.25, 3.2, cz, 0, 0.3, 0.3, h.L * 0.7, COL.pipe, 0, T.iron, uv);
+    uv[0] = h.L * 0.25;
+    R.draw(M.box, bn.maxX + 0.25, 4.6, cz, 0, 0.28, 0.28, h.L * 0.5, COL.pipe, 0, T.iron, uv);
+    R.draw(M.cyl, h.tee.x + 1.5, -0.18, h.tee.z + 1.0, 0, 0.9, 0.4, 0.9, COL.drain, 0);
+    R.draw(M.cyl, h.tee.x + 1.5, -0.02, h.tee.z + 1.0, 0, 1.05, 0.08, 1.05, COL.steel, 0);
 
     // cup + flag
     const c = h.cup;
@@ -400,18 +449,53 @@ export class Game {
     R.draw(M.cyl, c.x, 1.25, c.z, 0, 0.08, 2.5, 0.08, COL.pole, 0);
     R.draw(M.box, c.x + 0.45, 2.1, c.z, 0, 0.9, 0.55, 0.08, COL.flag, 0.25);
 
-    // obstacles
+    // obstacles — boxes become water-stained cardboard or welded metal-scrap piles
     for (const bx of h.boxes) {
       if (bx.broken) continue;
-      R.draw(M.box, bx.x, bx.h / 2, bx.z, 0, bx.w, bx.h, bx.d, bx.breakable ? COL.crate : COL.block, 0);
+      uv[0] = bx.w; uv[1] = bx.h;
+      if (bx.propType === "cardboard") {
+        R.draw(M.box, bx.x, bx.h / 2, bx.z, bx.yaw, bx.w, bx.h, bx.d, COL.cardboard, 0, T.cardboard, uv);
+        R.draw(M.box, bx.x, bx.h * 0.18, bx.z, bx.yaw, bx.w * 1.01, bx.h * 0.3, bx.d * 1.01, COL.cardWet, 0, T.cardboard, uv);
+        R.draw(M.box, bx.x, bx.h + 0.04, bx.z, bx.yaw + 0.3, bx.w * 0.6, 0.08, bx.d * 0.9, COL.cardboard, 0, T.cardboard, uv);
+      } else {
+        R.draw(M.box, bx.x, bx.h / 2, bx.z, bx.yaw, bx.w, bx.h, bx.d, COL.rust, 0.03, T.iron, uv);
+        R.draw(M.box, bx.x - bx.w * 0.2, bx.h * 0.85, bx.z + bx.d * 0.15, bx.yaw + 0.5, bx.w * 0.5, bx.h * 0.4, bx.d * 0.5, COL.rust, 0.04, T.iron, uv);
+        R.draw(M.cone, bx.x + bx.w * 0.25, bx.h * 0.8, bx.z - bx.d * 0.1, bx.yaw, bx.w * 0.4, bx.h * 0.7, bx.d * 0.4, COL.steel, 0);
+      }
     }
-    for (const p of h.pillars) R.draw(M.cyl, p.x, p.h / 2, p.z, 0, p.r * 2, p.h, p.r * 2, COL.pillar, 0);
+    // pillars become rusty barrels with hot-rust bands
+    for (const p of h.pillars) {
+      uv[0] = 3; uv[1] = p.h;
+      R.draw(M.cyl, p.x, p.h / 2, p.z, 0, p.r * 2, p.h, p.r * 2, COL.rust, 0.04, T.iron, uv);
+      R.draw(M.cyl, p.x, p.h * 0.75, p.z, 0, p.r * 2.06, p.h * 0.08, p.r * 2.06, COL.rustHot, 0.18);
+      R.draw(M.cyl, p.x, p.h * 0.30, p.z, 0, p.r * 2.06, p.h * 0.08, p.r * 2.06, COL.rustHot, 0.18);
+    }
+    // bars become spinning spiked wheels on a steel hub (collision unchanged)
     for (const bar of h.bars) {
-      R.draw(M.box, bar.x, 0.55, bar.z, -bar.angle, bar.len, bar.h, bar.w, COL.bar, this.cuffed ? 0 : 0.12);
-      R.draw(M.cyl, bar.x, 0.55, bar.z, 0, 0.5, 1.1, 0.5, COL.pillar, 0);
+      R.draw(M.cyl, bar.x, 0.55, bar.z, 0, 0.5, 1.1, 0.5, COL.steel, 0);
+      R.draw(M.wheel, bar.x, 0.9, bar.z, -bar.angle, bar.len, bar.len, bar.len, COL.rust, this.cuffed ? 0 : 0.2);
+      R.draw(M.wheel, bar.x, 0.9, bar.z, -bar.angle + 0.4, bar.len * 0.7, bar.len * 0.7, bar.len * 0.7, COL.rustHot, this.cuffed ? 0 : 0.14);
     }
+    // mines become a bench saw-blade or a rusty spike cluster
     const minePulse = 0.35 + 0.4 * Math.abs(Math.sin(this.simTime * 5));
-    for (const m of h.mines) R.draw(M.cone, m.x, 0.45, m.z, this.simTime, m.r * 2, 0.9, m.r * 2, COL.mine, m.armed ? minePulse : 0);
+    for (const m of h.mines) {
+      if (m.variant === "saw") {
+        uv[0] = 1; uv[1] = 1;
+        R.draw(M.box, m.x, 0.25, m.z, 0, m.r * 2.4, 0.5, m.r * 1.2, COL.wood, 0, T.wood, uv);
+        R.draw(M.saw, m.x, 0.6, m.z, m.armed ? this.simTime * 6 : 0, m.r * 2, m.r * 2, m.r * 2, COL.steel, m.armed ? minePulse * 0.6 : 0);
+      } else {
+        R.draw(M.cone, m.x, 0.45, m.z, this.simTime, m.r * 1.4, 0.9, m.r * 1.4, COL.rust, m.armed ? minePulse : 0);
+        R.draw(M.cone, m.x + 0.2, 0.35, m.z - 0.15, this.simTime, m.r * 0.9, 0.7, m.r * 0.9, COL.rustHot, m.armed ? minePulse : 0);
+        R.draw(M.cone, m.x - 0.18, 0.35, m.z + 0.18, this.simTime, m.r * 0.9, 0.7, m.r * 0.9, COL.rust, m.armed ? minePulse : 0);
+      }
+    }
+
+    // decorative chains + a spiked rack board on the back wall
+    R.draw(M.cyl, bn.maxX - 1.2, CEIL_Y - 1.8, cz + 3, 0, 0.06, 3.4, 0.06, COL.chain, 0);
+    R.draw(M.cyl, bn.maxX - 1.6, CEIL_Y - 2.4, cz + 3.4, 0, 0.06, 4.6, 0.06, COL.chain, 0);
+    uv[0] = 2; uv[1] = 1;
+    R.draw(M.box, 0, 2.0, bn.maxZ + 0.3, 0, 4.0, 2.4, 0.2, COL.wood, 0, T.wood, uv);
+    for (let i = -1; i <= 1; i++) R.draw(M.cone, i * 1.0, 2.0, bn.maxZ + 0.05, 0, 0.4, 0.8, 0.4, COL.steel, 0.05);
 
     // pickups
     for (const pk of h.pickups) {
@@ -430,9 +514,12 @@ export class Game {
     }
 
     // ball
-    R.draw(M.ball, this.ball.x, BALL_R, this.ball.z, this.ball.roll, BALL_R * 2, BALL_R * 2, BALL_R * 2, COL.ball, 0.04);
+    R.draw(M.ball, this.ball.x, BALL_R, this.ball.z, this.ball.roll, BALL_R * 2, BALL_R * 2, BALL_R * 2, COL.ball, 0.06);
 
-    // damage flash via DOM
+    // resolve the low-res scene buffer to the canvas with the PSX/CRT post pass
+    R.present(this.simTime);
+
+    // damage flash + power meter via DOM
     this.els.flash.style.opacity = this.flash ? Math.min(0.6, this.flash) : 0;
     if (this.state === "charging") {
       this.els.power.classList.add("show");
