@@ -1,0 +1,13 @@
+{
+  "name": "putt-or-die",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A 3D mini-golf roguelike inspired by Buckshot Roulette.",
+  "scripts": {
+    "serve": "python3 -m http.server 8000"
+  },
+  "dependencies": {
+    "playwright-core": "^1.61.1"
+  }
+}

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Putt or Die</title>
+<meta name="description" content="A 3D mini-golf roguelike inspired by Buckshot Roulette. Sink the putt or eat lead.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23090a0c'/%3E%3Ccircle cx='14' cy='15' r='9' fill='%23d8d4c8'/%3E%3Crect x='21' y='17' width='8' height='4' rx='1' fill='%23c81e1e'/%3E%3C/svg%3E">
+<meta property="og:title" content="Putt or Die">
+<meta property="og:description" content="A 3D mini-golf roguelike inspired by Buckshot Roulette.">
+<meta name="theme-color" content="#090a0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --red:#c81e1e; --red2:#ff3b3b; --amber:#e0a020; --green:#6fae4a;
+    --ink:#0a0c0e; --bone:#d8d4c8; --dim:#7d7a72;
+    --ui:"Arial Narrow", "Helvetica Neue", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;overflow:hidden;background:#06080a;color:var(--bone);
+    font-family:var(--ui);user-select:none;-webkit-user-select:none;}
+  #c{display:block;position:fixed;inset:0;touch-action:none;}
+  /* CRT scanlines + vignette over everything */
+  #grain{position:fixed;inset:0;pointer-events:none;z-index:50;
+    background:
+      radial-gradient(120% 120% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+    mix-blend-mode:multiply;}
+  #flash{position:fixed;inset:0;pointer-events:none;z-index:55;background:radial-gradient(circle,rgba(200,20,20,.0) 30%,var(--red) 130%);opacity:0;transition:opacity .12s;}
+  .hud{position:fixed;z-index:20;text-shadow:0 2px 6px #000;}
+  #hp{top:10px;left:12px;font-size:26px;letter-spacing:2px;}
+  #hp .hf{color:var(--red2);} #hp .he{color:#3a2222;}
+  #status{top:14px;left:50%;transform:translateX(-50%);font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--bone);}
+  #status b,#score b{color:var(--amber);font-weight:700;}
+  #score{top:14px;right:12px;font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);text-align:right;}
+  #dealer{position:fixed;z-index:20;top:46px;left:50%;transform:translateX(-50%);font-size:20px;font-style:italic;
+    color:#d24;text-shadow:0 0 12px #500,0 2px 4px #000;opacity:0;letter-spacing:1px;white-space:nowrap;}
+  #dealer.show{animation:bark 3.2s ease forwards;}
+  @keyframes bark{0%{opacity:0;transform:translateX(-50%) translateY(-8px);}12%{opacity:1;transform:translateX(-50%) translateY(0);}75%{opacity:1;}100%{opacity:0;}}
+  /* chamber */
+  #chamber{bottom:84px;left:50%;transform:translateX(-50%);text-align:center;}
+  .shells{display:flex;gap:4px;justify-content:center;margin-bottom:4px;}
+  .shell{width:13px;height:26px;border-radius:3px 3px 2px 2px;background:#2a2622;border:1px solid #000;box-shadow:inset 0 -6px 0 rgba(0,0,0,.4);}
+  .shell.live{background:linear-gradient(#ff5050,#a01010);} .shell.blank{background:linear-gradient(#9aa0a6,#4a5056);}
+  .shell.spent{opacity:.22;height:18px;align-self:flex-end;}
+  .cc{font-size:13px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+  .cc .lv{color:var(--red2);} .cc .bk{color:#9aa6b0;}
+  /* item bag */
+  #bag{bottom:12px;left:12px;display:flex;gap:8px;}
+  .slot{width:54px;height:54px;border-radius:8px;background:rgba(10,12,14,.6);border:1.5px solid #2a2e33;position:relative;
+    display:flex;align-items:center;justify-content:center;color:var(--bone);cursor:pointer;padding:0;}
+  .slot .g{font-size:28px;line-height:1;} .slot .n{position:absolute;top:2px;left:5px;font-size:11px;color:var(--dim);}
+  .slot.empty{border-style:dashed;opacity:.4;cursor:default;}
+  .slot:not(.empty):active{transform:scale(.94);border-color:var(--amber);}
+  /* power + putt */
+  #power{position:fixed;z-index:20;bottom:78px;right:18px;width:190px;height:18px;background:#111;border:1.5px solid #333;border-radius:9px;overflow:hidden;display:none;}
+  #power.show{display:block;}
+  #powerFill{height:100%;width:0;background:linear-gradient(90deg,#3a7,#fd0 60%,#f33);}
+  #putt{position:fixed;z-index:20;bottom:12px;right:18px;width:128px;height:54px;border-radius:10px;border:2px solid var(--red);
+    background:linear-gradient(#1a1d20,#0c0e10);color:var(--bone);font-family:var(--ui);font-size:22px;font-weight:700;
+    letter-spacing:4px;text-transform:uppercase;cursor:pointer;box-shadow:0 0 14px rgba(200,30,30,.35);}
+  #putt:active{transform:translateY(2px);}
+  #mute{position:fixed;z-index:20;top:42px;right:14px;width:34px;height:34px;border-radius:8px;border:1px solid #2a2e33;
+    background:rgba(10,12,14,.6);color:var(--bone);font-size:16px;cursor:pointer;}
+  /* toasts */
+  #toast{position:fixed;z-index:40;bottom:150px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;}
+  .toast{padding:7px 16px;border-radius:6px;font-size:18px;letter-spacing:2px;text-transform:uppercase;background:rgba(8,10,12,.85);
+    border:1px solid #333;animation:tin 1.9s ease forwards;text-shadow:0 2px 4px #000;}
+  .toast.good{color:#7fe07f;border-color:#2a5a2a;} .toast.bad{color:#ff5a5a;border-color:#5a2222;}
+  .toast.warn{color:#ffce54;border-color:#5a4a22;} .toast.ok{color:var(--bone);}
+  @keyframes tin{0%{opacity:0;transform:translateY(14px) scale(.9);}12%{opacity:1;transform:none;}80%{opacity:1;}100%{opacity:0;transform:translateY(-10px);}}
+  /* overlays */
+  .ov{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;
+    background:radial-gradient(circle at 50% 35%,rgba(20,8,8,.78),rgba(2,3,4,.94));text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .logo{font-size:min(15vw,116px);font-weight:800;letter-spacing:6px;line-height:.92;margin:0;
+    color:var(--bone);text-shadow:0 0 26px rgba(200,30,30,.5),0 6px 0 #300,0 8px 18px #000;transform:scaleY(1.12);}
+  .logo .or{color:var(--red2);}
+  .tag{color:var(--dim);font-size:18px;letter-spacing:3px;text-transform:uppercase;margin:10px 0 22px;}
+  .btn{padding:14px 34px;font-family:var(--ui);font-size:24px;font-weight:700;letter-spacing:4px;text-transform:uppercase;
+    color:#fff;background:linear-gradient(#b81818,#7a0e0e);border:2px solid #ff5a5a;border-radius:10px;cursor:pointer;
+    box-shadow:0 0 22px rgba(200,30,30,.5);}
+  .btn:active{transform:translateY(2px);}
+  .how{margin-top:22px;max-width:560px;color:#b8b2a6;font-size:15px;line-height:1.55;letter-spacing:.5px;}
+  .how h3{color:var(--amber);letter-spacing:3px;font-size:14px;text-transform:uppercase;margin:0 0 8px;}
+  .how ul{margin:0;padding:0;list-style:none;text-align:left;} .how li{margin:5px 0;padding-left:18px;position:relative;}
+  .how li:before{content:"›";position:absolute;left:0;color:var(--red2);}
+  .rt{font-size:40px;font-weight:800;letter-spacing:4px;color:var(--bone);text-shadow:0 0 18px rgba(200,30,30,.4);margin:0;}
+  .rsub{color:var(--dim);letter-spacing:3px;text-transform:uppercase;margin:6px 0 20px;}
+  .cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;max-width:620px;}
+  .card{width:172px;min-height:166px;background:linear-gradient(#15181b,#0b0d0f);border:2px solid #2a2e33;border-radius:12px;
+    padding:18px 14px;cursor:pointer;color:var(--bone);font-family:var(--ui);transition:border-color .12s,transform .12s;}
+  .card:hover{border-color:var(--amber);transform:translateY(-4px);}
+  .card .cg{font-size:46px;margin-bottom:8px;} .card .cn{font-size:21px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+  .card .cs{font-size:13px;color:var(--dim);margin-top:8px;line-height:1.4;}
+  #overStats{color:#cfc8bc;letter-spacing:2px;text-transform:uppercase;margin:8px 0 22px;font-size:18px;} #overStats b{color:var(--amber);}
+  .err{color:#ff7a7a;font-size:18px;max-width:520px;line-height:1.5;}
+  @media (max-width:520px){ #status{font-size:14px;} #score{font-size:11px;} #dealer{font-size:15px;} .slot{width:46px;height:46px;} .slot .g{font-size:23px;} #putt{width:104px;height:48px;font-size:18px;} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="grain"></div>
+<div id="flash"></div>
+
+<div class="hud" id="hp"></div>
+<div class="hud" id="status"></div>
+<div class="hud" id="score"></div>
+<button id="mute" title="Mute (M)">🔊</button>
+<div id="dealer"></div>
+
+<div class="hud" id="chamber"></div>
+<div class="hud" id="bag"></div>
+<div id="power"><div id="powerFill"></div></div>
+<button id="putt">Putt</button>
+<div id="toast"></div>
+
+<!-- TITLE -->
+<div class="ov" id="title">
+  <h1 class="logo">PUTT<span class="or"> OR </span>DIE</h1>
+  <div class="tag" id="tagline"></div>
+  <button class="btn" id="startBtn"></button>
+  <div class="how"><h3 id="howTitle"></h3><ul id="howList"></ul></div>
+</div>
+
+<!-- REWARD -->
+<div class="ov" id="reward">
+  <p class="rt" id="rewardTitle"></p>
+  <p class="rsub" id="rewardSub"></p>
+  <div class="cards" id="rewardCards"></div>
+</div>
+
+<!-- GAME OVER -->
+<div class="ov" id="over">
+  <h1 class="logo" id="overTitle"></h1>
+  <div id="overStats"></div>
+  <button class="btn" id="againBtn"></button>
+</div>
+
+<script type="module">
+import { Game } from "./js/game.js";
+import { STR } from "./strings.js";
+
+// static strings into the DOM (zero literals in code paths)
+document.getElementById("tagline").textContent = STR.tagline;
+document.getElementById("startBtn").textContent = STR.start;
+document.getElementById("howTitle").textContent = STR.howTitle;
+document.getElementById("howList").innerHTML = STR.how.map(s => `<li>${s}</li>`).join("");
+document.getElementById("rewardTitle").textContent = STR.rewardTitle;
+document.getElementById("rewardSub").textContent = STR.rewardSub;
+document.getElementById("overTitle").textContent = STR.over;
+document.getElementById("againBtn").textContent = STR.again;
+
+const els = {
+  hp: document.getElementById("hp"), status: document.getElementById("status"), score: document.getElementById("score"),
+  dealer: document.getElementById("dealer"), chamber: document.getElementById("chamber"), bag: document.getElementById("bag"),
+  power: document.getElementById("power"), powerFill: document.getElementById("powerFill"), putt: document.getElementById("putt"),
+  toast: document.getElementById("toast"), flash: document.getElementById("flash"), mute: document.getElementById("mute"),
+  title: document.getElementById("title"), reward: document.getElementById("reward"), over: document.getElementById("over"),
+  rewardCards: document.getElementById("rewardCards"), overStats: document.getElementById("overStats"),
+  start: document.getElementById("startBtn"), again: document.getElementById("againBtn"),
+};
+
+try {
+  const game = new Game(document.getElementById("c"), els);
+  game.boot();
+  window.__game = game; // dev handle
+} catch (err) {
+  const t = document.getElementById("title");
+  t.classList.add("show");
+  t.innerHTML = `<h1 class="logo">PUTT<span class="or"> OR </span>DIE</h1>
+    <p class="err">This game needs WebGL, which your browser/device blocked.<br>${(err && err.message) || err}</p>`;
+  console.error(err);
+}
+</script>
+</body>
+</html>

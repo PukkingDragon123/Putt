@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%;background:#06080a;overflow:hidden;font-family:"Arial Narrow","Helvetica Neue",system-ui,sans-serif;}
+  .stage{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:
+      radial-gradient(120% 95% at 50% 38%, #241012 0%, #0c0a0c 55%, #050608 100%);
+    overflow:hidden;}
+  .felt{position:absolute;left:-10%;right:-10%;bottom:-22%;height:62%;
+    background:radial-gradient(60% 80% at 50% 0%, #1b3a1f, #0c1c10 70%, transparent);
+    transform:perspective(620px) rotateX(58deg);filter:saturate(.8) brightness(.8);}
+  .bulb{position:absolute;top:-12%;left:50%;width:60%;height:55%;transform:translateX(-50%);
+    background:radial-gradient(circle at 50% 0%, rgba(255,200,120,.35), transparent 60%);}
+  .scan{position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);mix-blend-mode:multiply;}
+  .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(110% 110% at 50% 45%, transparent 52%, rgba(0,0,0,.7) 100%);}
+  .logo{position:relative;font-weight:800;letter-spacing:.06em;line-height:.86;color:#d8d4c8;text-align:center;
+    text-shadow:0 0 34px rgba(200,30,30,.55), 0 7px 0 #2a0606, 0 10px 26px #000;transform:scaleY(1.14);margin:0;}
+  .logo .or{color:#ff3b3b;}
+  .tag{position:relative;color:#b59;letter-spacing:.34em;text-transform:uppercase;margin-top:3.4%;
+    color:#c98;font-weight:700;}
+  .props{position:relative;margin-top:3%;display:flex;align-items:flex-end;gap:4%;filter:drop-shadow(0 16px 22px #000);}
+  svg{display:block;}
+  .iconwrap{position:relative;filter:drop-shadow(0 14px 26px #000);}
+</style></head>
+<body>
+<div class="stage" id="stage"></div>
+<script>
+const ball = (s) => `<svg width="${s}" height="${s}" viewBox="0 0 100 100">
+  <defs><radialGradient id="bg" cx="38%" cy="32%" r="72%">
+    <stop offset="0%" stop-color="#fbf7ec"/><stop offset="55%" stop-color="#cdc8ba"/>
+    <stop offset="100%" stop-color="#6f6a5e"/></radialGradient></defs>
+  <circle cx="50" cy="52" r="42" fill="url(#bg)" stroke="#2a2822" stroke-width="1.5"/>
+  ${Array.from({length:34}).map((_,i)=>{const a=i*1.93,r=8+ (i%5)*6.4;const x=50+Math.cos(a)*r;const y=46+Math.sin(a)*r;return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.1" fill="#9c9789" opacity=".5"/>`}).join("")}
+  <ellipse cx="38" cy="34" rx="13" ry="9" fill="#fff" opacity=".5"/></svg>`;
+const shell = (w,h,rot)=>`<svg width="${w}" height="${h}" viewBox="0 0 40 90" style="transform:rotate(${rot}deg)">
+  <rect x="6" y="2" width="28" height="60" rx="6" fill="#c81e1e" stroke="#5a0a0a" stroke-width="2"/>
+  <rect x="6" y="10" width="28" height="3" fill="#7a1010"/><rect x="6" y="18" width="28" height="2" fill="#7a1010"/>
+  <rect x="4" y="58" width="32" height="30" rx="4" fill="#c9a233" stroke="#6e560f" stroke-width="2"/>
+  <circle cx="20" cy="74" r="6" fill="#8a6c14"/></svg>`;
+
+const mode = new URLSearchParams(location.search).get("mode") || "thumb";
+const stage = document.getElementById("stage");
+if (mode === "thumb") {
+  stage.innerHTML = `
+    <div class="bulb"></div><div class="felt"></div>
+    <h1 class="logo" style="font-size:168px">PUTT<span class="or"> OR </span>DIE</h1>
+    <div class="tag" style="font-size:30px">Mini-golf roulette · sink it or eat lead</div>
+    <div class="props">${shell(70,150,-18)}${ball(196)}${shell(60,128,16)}${shell(50,108,30)}</div>
+    <div class="scan"></div><div class="vig"></div>`;
+} else {
+  stage.innerHTML = `
+    <div class="bulb" style="height:70%"></div>
+    <div class="iconwrap" style="display:flex;align-items:flex-end;gap:0">
+      ${ball(420)}<div style="margin-left:-70px;margin-bottom:40px">${shell(150,320,14)}</div>
+    </div>
+    <div class="scan"></div><div class="vig"></div>`;
+}
+</script>
+</body></html>

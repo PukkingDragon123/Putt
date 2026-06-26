@@ -1,0 +1,9 @@
+id,role,type,description,size/ratio,style line ref,source
+thumbnail,deploy cover + marketplace card,image,"putt or die title key art: bone-white golf ball beside a sawed-off shotgun on grimy green felt under a harsh basement bulb",16:9,STYLE FORMULA,generate
+favicon,site favicon + catalog icon,image,"single bone-white golf ball with a tiny red shotgun shell, dark vignette",1:1,STYLE FORMULA,generate
+mat_felt,ground/green material,procedural shader,"muted desaturated green felt with film-grain dither",in-engine,STYLE FORMULA,procedural
+mat_concrete,wall/floor material,procedural shader,"grimy dark concrete with vertex jitter + grain",in-engine,STYLE FORMULA,procedural
+mesh_ball,player ball,procedural geometry,"faceted bone-white golf sphere",in-engine,STYLE FORMULA,procedural
+mesh_hazards,spike-mine / water / sand / bars,procedural geometry,"blood-red faceted spike cones, dark water plane, gritty sand, rotating bars",in-engine,STYLE FORMULA,procedural
+mesh_pickups,item pads + flag,procedural geometry,"beer-amber and pill-green pads, hot blood-red hole flag",in-engine,STYLE FORMULA,procedural
+sfx_set,all sound effects,procedural audio,"crunchy lo-fi putt thwack, wall clack, sink chime, shotgun BANG, blank click, heal, ambient basement drone",in-engine,STYLE FORMULA,procedural
