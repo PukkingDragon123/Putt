@@ -320,6 +320,14 @@ export class Renderer {
     return { posBuf, normBuf, uvBuf, count };
   }
 
+  // per-hole displaced green; free the previous one to avoid GPU leaks
+  buildDynamicMesh(P, N, U) { return this.mesh({ P, N, U }); }
+  freeMesh(m) {
+    if (!m) return;
+    const gl = this.gl;
+    gl.deleteBuffer(m.posBuf); gl.deleteBuffer(m.normBuf); gl.deleteBuffer(m.uvBuf);
+  }
+
   _makeScene(w, h) {
     const gl = this.gl;
     if (this.scene) { gl.deleteFramebuffer(this.scene.fb); gl.deleteTexture(this.scene.tex); gl.deleteRenderbuffer(this.scene.depth); }

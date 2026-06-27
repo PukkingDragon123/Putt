@@ -29,7 +29,7 @@ const diag = await page.evaluate(() => {
   return {
     hasGame: !!g, state: g && g.state, hp: g && g.hp,
     glOK: !!gl, glErr: gl ? gl.getError() : "no-gl",
-    holePar: g && g.hole && g.hole.par, chamber: g && g.chamber && g.chamber.length,
+    holePar: g && g.hole && g.hole.par, clutter: g && g.hole && g.hole.clutter.length, money: g && g.money,
     meshes: g && g.renderer && Object.keys(g.renderer.meshes),
   };
 });
@@ -43,7 +43,7 @@ const result = await page.evaluate(async () => {
   g.start();
   const log = [];
   const stepFor = (sec) => { for (let i = 0; i < Math.round(sec * 60); i++) g.update(); };
-  for (let s = 0; s < 6 && g.state !== "reward" && g.state !== "over"; s++) {
+  for (let s = 0; s < 6 && g.state !== "shop" && g.state !== "over"; s++) {
     if (g.state !== "aiming") break;
     // aim straight at the cup, full-ish power
     g.aimAngle = Math.atan2(g.hole.cup.z - g.ball.z, g.hole.cup.x - g.ball.x);

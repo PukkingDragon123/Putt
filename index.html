@@ -62,15 +62,14 @@
   /* ---- generic chunky "pixel" panel: hard stepped border via box-shadow ---- */
   .hud{position:fixed;z-index:20;letter-spacing:2px;}
   /* the panel mixin lives on these wrappers */
-  #hp,#status,#score,#chamber{padding:6px 10px;background:rgba(4,8,6,.82);
+  #money,#status,#score{padding:6px 10px;background:rgba(4,8,6,.82);
     border:2px solid var(--line);
     box-shadow:0 0 0 2px #000, inset 0 0 0 1px rgba(57,255,90,.18),
                0 3px 0 0 #000, 4px 4px 0 0 rgba(0,0,0,.6);
     text-shadow:0 0 6px rgba(57,255,90,.25),1px 1px 0 #000;}
 
-  #hp{top:12px;left:12px;font-size:22px;letter-spacing:3px;line-height:1;color:var(--red2);}
-  #hp .hf{color:var(--red2);text-shadow:0 0 8px var(--red),1px 1px 0 #000;}
-  #hp .he{color:#3a1414;text-shadow:none;}
+  #money{top:12px;left:12px;font-size:26px;letter-spacing:2px;line-height:1;color:var(--amber2);}
+  #money b{color:var(--amber2);text-shadow:0 0 12px var(--amber),1px 1px 0 #000;}
   #status{top:14px;left:50%;transform:translateX(-50%);font-size:14px;letter-spacing:3px;text-transform:uppercase;color:var(--green2);white-space:nowrap;}
   #status b,#score b{color:var(--amber);font-weight:700;text-shadow:0 0 8px var(--amber),1px 1px 0 #000;}
   #score{top:14px;right:12px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);text-align:right;line-height:1.5;}
@@ -198,9 +197,31 @@
   #overStats b{color:var(--amber);text-shadow:0 0 8px rgba(255,176,0,.5);}
   .err{color:var(--red2);font-size:16px;max-width:520px;line-height:1.6;letter-spacing:1px;text-shadow:1px 1px 0 #000;}
 
+  /* ---- Buckshot-style sparse MENU: black, one bare swinging bulb ---- */
+  .menu{background:radial-gradient(circle at 50% 18%,rgba(40,30,12,.5),rgba(0,0,0,.99) 60%) , #000 !important;}
+  .menu .bulb{position:absolute;top:0;left:50%;width:8px;height:90px;transform-origin:top center;
+    background:linear-gradient(#222,#444);box-shadow:0 0 0 1px #000;animation:bulbswing 4.5s ease-in-out infinite;}
+  .menu .bulb:after{content:"";position:absolute;bottom:-16px;left:-9px;width:26px;height:26px;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,#fff,#ffcf7a 40%,#a8741f 100%);
+    box-shadow:0 0 40px 18px rgba(255,180,80,.45),0 0 0 1px #000;animation:bulbflick 3.7s steps(2) infinite;}
+  @keyframes bulbswing{0%,100%{transform:rotate(-5deg);}50%{transform:rotate(5deg);}}
+  @keyframes bulbflick{0%,97%,100%{opacity:1;}98%{opacity:.4;}}
+  .menu .logo{margin-top:40px;} .hint{margin-top:26px;color:var(--dim);font-size:12px;letter-spacing:2px;text-transform:uppercase;text-shadow:1px 1px 0 #000;}
+
+  /* ---- SHOP: the basement man's sack of golf balls ---- */
+  .shop{background:radial-gradient(circle at 50% 42%,rgba(40,24,8,.9),rgba(2,2,1,.98))!important;}
+  .card .cp{margin-top:12px;font-size:18px;font-weight:700;letter-spacing:2px;color:var(--amber2);text-shadow:0 0 8px rgba(255,176,0,.5),1px 1px 0 #000;}
+  .card.equipped{border-color:var(--amber);box-shadow:0 0 0 2px #000,0 0 18px rgba(255,176,0,.5),4px 4px 0 rgba(0,0,0,.6);}
+  .card:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+  .card:disabled:hover{transform:none;border-color:var(--line);box-shadow:0 0 0 2px #000,4px 4px 0 rgba(0,0,0,.6);}
+  .shopfoot{margin-top:24px;display:flex;align-items:center;gap:22px;}
+  .shopfoot #shopCash{color:var(--amber2);letter-spacing:2px;text-transform:uppercase;font-size:16px;}
+  .shopfoot #shopCash b{text-shadow:0 0 8px rgba(255,176,0,.5);}
+  .btn.small{padding:12px 22px;font-size:17px;letter-spacing:3px;animation:none;}
+
   /* ---- responsive (mobile 390x844) ---- */
   @media (max-width:520px){
-    #hp{font-size:18px;}
+    #money{font-size:20px;}
     #status{font-size:11px;letter-spacing:2px;} #score{font-size:10px;}
     #dealer{font-size:13px;letter-spacing:1px;top:58px;}
     .slot{width:46px;height:46px;} .slot .g{font-size:23px;}
@@ -221,31 +242,31 @@
 <div id="scan"></div>
 <div id="flash"></div>
 
-<div class="hud" id="hp"></div>
+<div class="hud" id="money"></div>
 <div class="hud" id="status"></div>
 <div class="hud" id="score"></div>
 <button id="mute" title="Mute (M)">🔊</button>
 <div id="dealer"></div>
 
-<div class="hud" id="chamber"></div>
-<div class="hud" id="bag"></div>
 <div id="power"><div id="powerFill"></div></div>
 <button id="putt">Putt</button>
 <div id="toast"></div>
 
-<!-- TITLE -->
-<div class="ov" id="title">
+<!-- MENU -->
+<div class="ov menu" id="title">
+  <div class="bulb"></div>
   <h1 class="logo">PUTT<span class="or"> OR </span>DIE</h1>
   <div class="tag" id="tagline"></div>
   <button class="btn" id="startBtn"></button>
-  <div class="how"><h3 id="howTitle"></h3><ul id="howList"></ul></div>
+  <div class="hint" id="hint"></div>
 </div>
 
-<!-- REWARD -->
-<div class="ov" id="reward">
-  <p class="rt" id="rewardTitle"></p>
-  <p class="rsub" id="rewardSub"></p>
-  <div class="cards" id="rewardCards"></div>
+<!-- SHOP -->
+<div class="ov shop" id="shop">
+  <p class="rt" id="shopTitle"></p>
+  <p class="rsub" id="shopBark"></p>
+  <div class="cards" id="shopCards"></div>
+  <div class="shopfoot"><span id="shopCash"></span><button class="btn small" id="shopDescend"></button></div>
 </div>
 
 <!-- GAME OVER -->
@@ -258,33 +279,30 @@
 <script type="module">
 import { Game } from "./js/game.js";
 import { STR } from "./strings.js";
+const id = (s) => document.getElementById(s);
 
 // static strings into the DOM (zero literals in code paths)
-document.getElementById("tagline").textContent = STR.tagline;
-document.getElementById("startBtn").textContent = STR.start;
-document.getElementById("howTitle").textContent = STR.howTitle;
-document.getElementById("howList").innerHTML = STR.how.map(s => `<li>${s}</li>`).join("");
-document.getElementById("rewardTitle").textContent = STR.rewardTitle;
-document.getElementById("rewardSub").textContent = STR.rewardSub;
-document.getElementById("overTitle").textContent = STR.over;
-document.getElementById("againBtn").textContent = STR.again;
+id("tagline").textContent = STR.tagline;
+id("startBtn").textContent = STR.start;
+id("hint").textContent = STR.hint;
+id("shopTitle").textContent = STR.shopTitle;
+id("overTitle").textContent = STR.over;
+id("againBtn").textContent = STR.again;
 
 const els = {
-  hp: document.getElementById("hp"), status: document.getElementById("status"), score: document.getElementById("score"),
-  dealer: document.getElementById("dealer"), chamber: document.getElementById("chamber"), bag: document.getElementById("bag"),
-  power: document.getElementById("power"), powerFill: document.getElementById("powerFill"), putt: document.getElementById("putt"),
-  toast: document.getElementById("toast"), flash: document.getElementById("flash"), mute: document.getElementById("mute"),
-  title: document.getElementById("title"), reward: document.getElementById("reward"), over: document.getElementById("over"),
-  rewardCards: document.getElementById("rewardCards"), overStats: document.getElementById("overStats"),
-  start: document.getElementById("startBtn"), again: document.getElementById("againBtn"),
+  money: id("money"), status: id("status"), score: id("score"), dealer: id("dealer"),
+  power: id("power"), powerFill: id("powerFill"), putt: id("putt"), toast: id("toast"),
+  flash: id("flash"), mute: id("mute"), title: id("title"), shop: id("shop"), over: id("over"),
+  shopBark: id("shopBark"), shopCash: id("shopCash"), shopCards: id("shopCards"), shopDescend: id("shopDescend"),
+  overStats: id("overStats"), start: id("startBtn"), again: id("againBtn"),
 };
 
 try {
-  const game = new Game(document.getElementById("c"), els);
+  const game = new Game(id("c"), els);
   game.boot();
   window.__game = game; // dev handle
 } catch (err) {
-  const t = document.getElementById("title");
+  const t = id("title");
   t.classList.add("show");
   t.innerHTML = `<h1 class="logo">PUTT<span class="or"> OR </span>DIE</h1>
     <p class="err">This game needs WebGL, which your browser/device blocked.<br>${(err && err.message) || err}</p>`;

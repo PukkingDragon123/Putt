@@ -76,6 +76,9 @@ export class Audio {
   }
   item() { if (!this.ctx || this.muted) return; const t = this._now(); this._tone("square", 700, 1100, t, 0.08, 0.25); }
   click() { if (!this.ctx || this.muted) return; const t = this._now(); this._tone("square", 1200, 1200, t, 0.02, 0.12); }
+  cash() { if (!this.ctx || this.muted) return; const t = this._now(); this._tone("square", 880, 1320, t, 0.06, 0.22); this._tone("square", 1320, 1760, t + 0.07, 0.08, 0.18); }
+  squeak() { if (!this.ctx || this.muted) return; const t = this._now(); this._tone("sawtooth", 1400, 2200, t, 0.05, 0.18); this._tone("sawtooth", 2000, 1500, t + 0.05, 0.05, 0.12); }
+  clatter() { if (!this.ctx || this.muted) return; const t = this._now(); this._burst(t, 0.08, 0.4, 4000, 800); this._tone("square", 300, 180, t, 0.1, 0.2); }
 
   ambientStart() {
     if (!this.ctx || this.ambient) return;

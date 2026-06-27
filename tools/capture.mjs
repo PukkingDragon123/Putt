@@ -19,6 +19,6 @@ await page.screenshot({ path: OUT + "/scene-deep.png" });
 await page.evaluate(() => { const g = window.__game; g.beginCharge(); g.chargeT=0.35; for(let i=0;i<2;i++) g.update(); for (let i=0;i<10;i++) g.render(); });
 await page.screenshot({ path: OUT + "/scene-charge.png" });
 
-const info = await page.evaluate(() => { const g=window.__game; const h=g.hole; return {floor:h.floor,par:h.par,boxes:h.boxes.length,pillars:h.pillars.length,bars:h.bars.length,mines:h.mines.length,sand:h.sand.length,water:h.water.length,pickups:h.pickups.length,W:h.W,L:h.L}; });
+const info = await page.evaluate(() => { const g=window.__game; const h=g.hole; return {floor:h.floor,par:h.par,clutter:h.clutter.length,light:h.clutter.filter(o=>o.light).length,rats:h.rats.length,sand:h.sand.length,water:h.water.length,W:h.W,L:h.L}; });
 console.log("deep hole:", JSON.stringify(info));
 await browser.close();
