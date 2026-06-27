@@ -51,7 +51,7 @@ export class Game {
     this.cam = { ex: 0, ey: 10, ez: -10, tx: 0, ty: 0, tz: 0 };
     this.shake = 0; this.flash = 0; this.simTime = 0; this.greenMesh = null;
     this.dust = Array.from({ length: 10 }, () => ({ x: 0, y: 0, z: 0, life: 0, s: 1 }));
-    this.aimHeld = { left: false, right: false }; this._padA = false; this.sinkAnim = 0;
+    this.aimHeld = { left: false, right: false }; this._padA = false; this.sinkAnim = 0; this.rollTime = 0;
     this.best = parseInt(localStorage.getItem("putt_best") || "0", 10) || 0;
     this.state = "title";
     this.bindInput();
@@ -126,7 +126,7 @@ export class Game {
     if (this.state !== "charging") return;
     const a = this.aimAngle, speed = (0.15 + this.power * 0.85) * MAX_PUTT * this.mods.powerMax;
     this.ball.vx = Math.cos(a) * speed; this.ball.vz = Math.sin(a) * speed;
-    this.strokes++; this.state = "rolling"; this.shake = Math.max(this.shake, 0.15 * this.power);
+    this.strokes++; this.state = "rolling"; this.rollTime = 0; this.shake = Math.max(this.shake, 0.15 * this.power);
     this.audio.putt(this.power); this.els.power.classList.remove("show"); this.updateHUD();
   }
 
@@ -149,6 +149,9 @@ export class Game {
 
   stepBall() {
     const b = this.ball, h = this.hole, t = h.terrain;
+    // safety guard: a stroke must always terminate, whatever the terrain does
+    this.rollTime += DT;
+    if (this.rollTime > 18) { b.vx = 0; b.vz = 0; this.endRoll("stopped"); return; }
     // slope acceleration (downhill) + friction
     terrainSlope(t, b.x, b.z, this._slope);
     const gx = this._slope.gx, gz = this._slope.gz, gmag = Math.hypot(gx, gz);
